@@ -1,34 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+const API_URL = "http://127.0.0.1:5000";
 
 function Transactions() {
-  const [transactions, setTransactions] = useState([
-    {
-      id: 1,
-      date: "2026-09-12",
-      description: "Grocery Shopping",
-      category: "Food",
-      type: "Expense",
-      amount: 1500,
-    },
-    {
-      id: 2,
-      date: "2026-09-10",
-      description: "Monthly Salary",
-      category: "Salary",
-      type: "Income",
-      amount: 30000,
-    },
-    {
-      id: 3,
-      date: "2026-09-08",
-      description: "Bus Pass",
-      category: "Transport",
-      type: "Expense",
-      amount: 500,
-    },
-  ]);
+  const USER_ID = 1;
+  const ACCOUNT_ID = 1;
 
+  const [transactions, setTransactions] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   const [formData, setFormData] = useState({
     date: "",
@@ -38,6 +18,31 @@ function Transactions() {
     amount: "",
   });
 
+  // GET transactions
+  const fetchTransactions = async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/api/transactions?user_id=${USER_ID}`
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setTransactions(data.transactions);
+      } else {
+        alert(data.message || "Failed to load transactions");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Cannot connect to Flask backend");
+    }
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  // Form input
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -47,20 +52,118 @@ function Transactions() {
     });
   };
 
-  const handleSubmit = (e) => {
+  // ADD or UPDATE
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const newTransaction = {
-      id: transactions.length + 1,
-      date: formData.date,
-      description: formData.description,
-      category: formData.category,
-      type: formData.type,
+    const transactionData = {
+      user_id: USER_ID,
+      account_id: ACCOUNT_ID,
+      category_id: Number(formData.category),
+      transaction_type: formData.type.toUpperCase(),
       amount: Number(formData.amount),
+      description: formData.description,
+      transaction_date: formData.date,
     };
 
-    setTransactions([...transactions, newTransaction]);
+    try {
+      let response;
 
+      if (editingId) {
+        // UPDATE
+        response = await fetch(
+          `${API_URL}/api/transactions/${editingId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(transactionData),
+          }
+        );
+      } else {
+        // ADD
+        response = await fetch(`${API_URL}/api/transactions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(transactionData),
+        });
+      }
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(
+          editingId
+            ? "Transaction updated successfully"
+            : "Transaction added successfully"
+        );
+
+        resetForm();
+        fetchTransactions();
+      } else {
+        alert(data.message || "Operation failed");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Cannot connect to Flask backend");
+    }
+  };
+
+  // EDIT button
+  const handleEdit = (transaction) => {
+    setEditingId(transaction.transaction_id);
+
+    setFormData({
+      date: transaction.transaction_date,
+      description: transaction.description || "",
+      category: String(transaction.category_id),
+      type:
+        transaction.transaction_type === "INCOME"
+          ? "Income"
+          : "Expense",
+      amount: String(transaction.amount),
+    });
+
+    setShowForm(true);
+  };
+
+  // DELETE
+  const handleDelete = async (transactionId) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this transaction?"
+    );
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/transactions/${transactionId}?user_id=${USER_ID}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("Transaction deleted successfully");
+        fetchTransactions();
+      } else {
+        alert(data.message || "Failed to delete transaction");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Cannot connect to Flask backend");
+    }
+  };
+
+  // Reset form
+  const resetForm = () => {
     setFormData({
       date: "",
       description: "",
@@ -69,21 +172,26 @@ function Transactions() {
       amount: "",
     });
 
+    setEditingId(null);
     setShowForm(false);
-  };
-
-  const handleDelete = (id) => {
-    setTransactions(
-      transactions.filter((transaction) => transaction.id !== id)
-    );
   };
 
   return (
     <div>
       <h1>Transactions</h1>
 
-      <button onClick={() => setShowForm(!showForm)}>
-        {showForm ? "Close" : "Add Transaction"}
+      <button
+        onClick={() => {
+          if (showForm) {
+            resetForm();
+          } else {
+            setShowForm(true);
+          }
+        }}
+      >
+        {showForm
+          ? "Close"
+          : "Add Transaction"}
       </button>
 
       {showForm && (
@@ -112,13 +220,14 @@ function Transactions() {
           </div>
 
           <div>
-            <label>Category</label>
+            <label>Category ID</label>
             <input
-              type="text"
+              type="number"
               name="category"
               value={formData.category}
               onChange={handleChange}
-              placeholder="Enter category"
+              placeholder="Enter category ID"
+              min="1"
               required
             />
           </div>
@@ -148,7 +257,20 @@ function Transactions() {
             />
           </div>
 
-          <button type="submit">Save Transaction</button>
+          <button type="submit">
+            {editingId
+              ? "Update Transaction"
+              : "Save Transaction"}
+          </button>
+
+          {editingId && (
+            <button
+              type="button"
+              onClick={resetForm}
+            >
+              Cancel Edit
+            </button>
+          )}
         </form>
       )}
 
@@ -170,14 +292,33 @@ function Transactions() {
 
         <tbody>
           {transactions.map((transaction) => (
-            <tr key={transaction.id}>
-              <td>{transaction.date}</td>
+            <tr key={transaction.transaction_id}>
+              <td>{transaction.transaction_date}</td>
+
               <td>{transaction.description}</td>
-              <td>{transaction.category}</td>
-              <td>{transaction.type}</td>
+
+              <td>{transaction.category_id}</td>
+
+              <td>{transaction.transaction_type}</td>
+
               <td>₹{transaction.amount}</td>
+
               <td>
-                <button onClick={() => handleDelete(transaction.id)}>
+                <button
+                  onClick={() =>
+                    handleEdit(transaction)
+                  }
+                >
+                  Edit
+                </button>
+
+                <button
+                  onClick={() =>
+                    handleDelete(
+                      transaction.transaction_id
+                    )
+                  }
+                >
                   Delete
                 </button>
               </td>
