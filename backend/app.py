@@ -1,11 +1,14 @@
 from flask import Flask, request
 from flask_cors import CORS
 from database import get_db_connection
+from Authentication.auth import auth_bp, token_required
 
 app = Flask(__name__)
 CORS(app)
 
 
+
+app.register_blueprint(auth_bp)
 # ============================================================
 # HOME
 # ============================================================
@@ -55,6 +58,7 @@ def test_db():
 # ============================================================
 
 @app.route("/api/accounts", methods=["POST"])
+@token_required
 def add_account():
     connection = None
     cursor = None
@@ -68,15 +72,14 @@ def add_account():
                 "message": "Request body is required"
             }, 400
 
-        user_id = data.get("user_id")
+        user_id = request.user_id
         account_name = data.get("account_name")
         account_type = data.get("account_type")
         opening_balance = data.get("opening_balance")
         currency = data.get("currency", "INR")
 
         if (
-            user_id is None
-            or not account_name
+            not account_name
             or not account_type
             or opening_balance is None
         ):
@@ -158,18 +161,13 @@ def add_account():
 # ============================================================
 
 @app.route("/api/accounts", methods=["GET"])
+@token_required
 def get_accounts():
     connection = None
     cursor = None
 
     try:
-        user_id = request.args.get("user_id")
-
-        if not user_id:
-            return {
-                "status": "error",
-                "message": "user_id is required"
-            }, 400
+        user_id = request.user_id
 
         connection = get_db_connection()
         cursor = connection.cursor()
@@ -228,6 +226,7 @@ def get_accounts():
 # ============================================================
 
 @app.route("/api/accounts/<int:account_id>", methods=["PUT"])
+@token_required
 def update_account(account_id):
     connection = None
     cursor = None
@@ -241,15 +240,14 @@ def update_account(account_id):
                 "message": "Request body is required"
             }, 400
 
-        user_id = data.get("user_id")
+        user_id = request.user_id
         account_name = data.get("account_name")
         account_type = data.get("account_type")
         opening_balance = data.get("opening_balance")
         currency = data.get("currency", "INR")
 
         if (
-            not user_id
-            or not account_name
+            not account_name
             or not account_type
             or opening_balance is None
         ):
@@ -341,12 +339,13 @@ def update_account(account_id):
 # ============================================================
 
 @app.route("/api/accounts/<int:account_id>", methods=["DELETE"])
+@token_required
 def delete_account(account_id):
     connection = None
     cursor = None
 
     try:
-        user_id = request.args.get("user_id")
+        user_id = request.user_id
 
         if not user_id:
             return {
@@ -413,6 +412,8 @@ def delete_account(account_id):
 # ============================================================
 
 @app.route("/api/transactions", methods=["POST"])
+@token_required
+
 def add_transaction():
     connection = None
     cursor = None
@@ -426,7 +427,7 @@ def add_transaction():
                 "message": "Request body is required"
             }, 400
 
-        user_id = data.get("user_id")
+        user_id = request.user_id
         account_id = data.get("account_id")
         category_id = data.get("category_id")
         transaction_type = data.get("transaction_type")
@@ -435,8 +436,7 @@ def add_transaction():
         transaction_date = data.get("transaction_date")
 
         if (
-            user_id is None
-            or account_id is None
+            account_id is None
             or category_id is None
             or not transaction_type
             or amount is None
@@ -471,6 +471,42 @@ def add_transaction():
 
         connection = get_db_connection()
         cursor = connection.cursor()
+        # Verify that the account belongs to the logged-in user
+        cursor.execute(
+            """
+            SELECT account_id
+            FROM accounts
+            WHERE account_id = %s
+            AND user_id = %s
+            """,
+            (account_id, user_id)
+        )
+
+        account = cursor.fetchone()
+
+        if not account:
+            return {
+                "status": "error",
+                "message": "Account does not belong to the authenticated user"
+            }, 403
+
+        cursor.execute(
+        """
+            SELECT category_id
+            FROM categories
+            WHERE category_id = %s
+            AND user_id = %s
+            """,
+            (category_id, user_id)
+        )
+
+        category = cursor.fetchone()
+
+        if not category:
+            return {
+                "status": "error",
+                "message": "Category does not belong to the authenticated user"
+            }, 403
 
         query = """
             INSERT INTO transactions
@@ -551,18 +587,13 @@ def add_transaction():
 # ============================================================
 
 @app.route("/api/transactions", methods=["GET"])
+@token_required
 def get_transactions():
     connection = None
     cursor = None
 
     try:
-        user_id = request.args.get("user_id")
-
-        if not user_id:
-            return {
-                "status": "error",
-                "message": "user_id is required"
-            }, 400
+        user_id = request.user_id
 
         connection = get_db_connection()
         cursor = connection.cursor()
@@ -626,6 +657,7 @@ def get_transactions():
 # ============================================================
 
 @app.route("/api/transactions/<int:transaction_id>", methods=["PUT"])
+@token_required
 def update_transaction(transaction_id):
     connection = None
     cursor = None
@@ -639,7 +671,7 @@ def update_transaction(transaction_id):
                 "message": "Request body is required"
             }, 400
 
-        user_id = data.get("user_id")
+        user_id = request.user_id
         account_id = data.get("account_id")
         category_id = data.get("category_id")
         transaction_type = data.get("transaction_type")
@@ -648,8 +680,7 @@ def update_transaction(transaction_id):
         transaction_date = data.get("transaction_date")
 
         if (
-            user_id is None
-            or account_id is None
+            account_id is None
             or category_id is None
             or not transaction_type
             or amount is None
@@ -773,12 +804,13 @@ def update_transaction(transaction_id):
 # ============================================================
 
 @app.route("/api/transactions/<int:transaction_id>", methods=["DELETE"])
+@token_required
 def delete_transaction(transaction_id):
     connection = None
     cursor = None
 
     try:
-        user_id = request.args.get("user_id")
+        user_id = request.user_id
 
         if not user_id:
             return {
@@ -838,6 +870,8 @@ def delete_transaction(transaction_id):
 
         if connection:
             connection.close()
+
+
 
 
 # ============================================================
