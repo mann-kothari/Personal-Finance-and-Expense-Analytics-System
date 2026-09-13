@@ -1,19 +1,26 @@
-# Node
-**/node_modules/
-
-# Build output
-**/dist/
-
-# Environment variables
-**/.env
-**/.env.local
-
-# Logs
-*.log
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# VS Code
+# Node 
+**/node_modules/ 
+ 
+# Build output 
+**/dist/ 
+ 
+# Environment variables 
+**/.env 
+**/.env.local 
+ 
+# Logs 
+*.log 
+ 
+# OS files 
+.DS_Store 
+Thumbs.db 
+ 
+# VS Code 
 .vscode/
+
+# Python
+venv/
+**/venv/
+__pycache__/
+**/__pycache__/
+*.pyc
