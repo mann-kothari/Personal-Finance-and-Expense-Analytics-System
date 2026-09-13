@@ -736,6 +736,337 @@ def delete_budget(budget_id):
             connection.close()
 
 
+# ============================================================
+# SAVINGS GOALS MANAGEMENT
+# ============================================================
+
+@app.route("/api/goals", methods=["POST"])
+def create_goal():
+    connection = None
+    cursor = None
+
+    try:
+        data = request.get_json()
+
+        user_id = data.get("user_id")
+        goal_name = data.get("goal_name")
+        target_amount = data.get("target_amount")
+        current_amount = data.get("current_amount", 0)
+        target_date = data.get("target_date")
+        description = data.get("description")
+        status = data.get("status", "ACTIVE")
+
+        if not user_id or not goal_name or target_amount is None:
+            return {
+                "status": "error",
+                "message": "user_id, goal_name and target_amount are required"
+            }, 400
+
+        target_amount = float(target_amount)
+        current_amount = float(current_amount)
+
+        if target_amount <= 0:
+            return {
+                "status": "error",
+                "message": "Target amount must be greater than 0"
+            }, 400
+
+        if current_amount < 0:
+            return {
+                "status": "error",
+                "message": "Current amount cannot be negative"
+            }, 400
+
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        query = """
+            INSERT INTO savings_goals
+            (user_id, goal_name, target_amount, current_amount,
+             target_date, description, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING goal_id, user_id, goal_name, target_amount,
+                      current_amount, target_date, description,
+                      status, created_at
+        """
+
+        cursor.execute(query, (
+            user_id,
+            goal_name,
+            target_amount,
+            current_amount,
+            target_date,
+            description,
+            status
+        ))
+
+        goal = cursor.fetchone()
+        connection.commit()
+
+        return {
+            "status": "success",
+            "message": "Savings goal created successfully",
+            "goal": {
+                "goal_id": goal[0],
+                "user_id": goal[1],
+                "goal_name": goal[2],
+                "target_amount": float(goal[3]),
+                "current_amount": float(goal[4]),
+                "target_date": str(goal[5]) if goal[5] else None,
+                "description": goal[6],
+                "status": goal[7],
+                "created_at": str(goal[8])
+            }
+        }, 201
+
+    except Exception as e:
+        if connection:
+            connection.rollback()
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }, 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+
+@app.route("/api/goals", methods=["GET"])
+def get_goals():
+    connection = None
+    cursor = None
+
+    try:
+        user_id = request.args.get("user_id")
+
+        if not user_id:
+            return {
+                "status": "error",
+                "message": "user_id is required"
+            }, 400
+
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        query = """
+            SELECT goal_id, user_id, goal_name, target_amount,
+                   current_amount, target_date, description,
+                   status, created_at
+            FROM savings_goals
+            WHERE user_id = %s
+            ORDER BY goal_id
+        """
+
+        cursor.execute(query, (user_id,))
+        rows = cursor.fetchall()
+
+        goals = []
+
+        for row in rows:
+            goals.append({
+                "goal_id": row[0],
+                "user_id": row[1],
+                "goal_name": row[2],
+                "target_amount": float(row[3]),
+                "current_amount": float(row[4]),
+                "target_date": str(row[5]) if row[5] else None,
+                "description": row[6],
+                "status": row[7],
+                "created_at": str(row[8])
+            })
+
+        return {
+            "status": "success",
+            "count": len(goals),
+            "goals": goals
+        }, 200
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }, 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+
+@app.route("/api/goals/<int:goal_id>", methods=["PUT"])
+def update_goal(goal_id):
+    connection = None
+    cursor = None
+
+    try:
+        data = request.get_json()
+
+        user_id = data.get("user_id")
+        goal_name = data.get("goal_name")
+        target_amount = data.get("target_amount")
+        current_amount = data.get("current_amount")
+        target_date = data.get("target_date")
+        description = data.get("description")
+        status = data.get("status")
+
+        if not user_id or not goal_name or target_amount is None or current_amount is None:
+            return {
+                "status": "error",
+                "message": "user_id, goal_name, target_amount and current_amount are required"
+            }, 400
+
+        target_amount = float(target_amount)
+        current_amount = float(current_amount)
+
+        if target_amount <= 0:
+            return {
+                "status": "error",
+                "message": "Target amount must be greater than 0"
+            }, 400
+
+        if current_amount < 0:
+            return {
+                "status": "error",
+                "message": "Current amount cannot be negative"
+            }, 400
+
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        query = """
+            UPDATE savings_goals
+            SET goal_name = %s,
+                target_amount = %s,
+                current_amount = %s,
+                target_date = %s,
+                description = %s,
+                status = %s
+            WHERE goal_id = %s
+              AND user_id = %s
+            RETURNING goal_id, user_id, goal_name, target_amount,
+                      current_amount, target_date, description,
+                      status, created_at
+        """
+
+        cursor.execute(query, (
+            goal_name,
+            target_amount,
+            current_amount,
+            target_date,
+            description,
+            status,
+            goal_id,
+            user_id
+        ))
+
+        goal = cursor.fetchone()
+
+        if not goal:
+            connection.rollback()
+
+            return {
+                "status": "error",
+                "message": "Savings goal not found"
+            }, 404
+
+        connection.commit()
+
+        return {
+            "status": "success",
+            "message": "Savings goal updated successfully",
+            "goal": {
+                "goal_id": goal[0],
+                "user_id": goal[1],
+                "goal_name": goal[2],
+                "target_amount": float(goal[3]),
+                "current_amount": float(goal[4]),
+                "target_date": str(goal[5]) if goal[5] else None,
+                "description": goal[6],
+                "status": goal[7],
+                "created_at": str(goal[8])
+            }
+        }, 200
+
+    except Exception as e:
+        if connection:
+            connection.rollback()
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }, 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+
+@app.route("/api/goals/<int:goal_id>", methods=["DELETE"])
+def delete_goal(goal_id):
+    connection = None
+    cursor = None
+
+    try:
+        user_id = request.args.get("user_id")
+
+        if not user_id:
+            return {
+                "status": "error",
+                "message": "user_id is required"
+            }, 400
+
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        query = """
+            DELETE FROM savings_goals
+            WHERE goal_id = %s
+              AND user_id = %s
+            RETURNING goal_id
+        """
+
+        cursor.execute(query, (goal_id, user_id))
+
+        deleted_goal = cursor.fetchone()
+
+        if not deleted_goal:
+            connection.rollback()
+
+            return {
+                "status": "error",
+                "message": "Savings goal not found"
+            }, 404
+
+        connection.commit()
+
+        return {
+            "status": "success",
+            "message": "Savings goal deleted successfully",
+            "goal_id": deleted_goal[0]
+        }, 200
+
+    except Exception as e:
+        if connection:
+            connection.rollback()
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }, 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
 
 
 # ============================================================
