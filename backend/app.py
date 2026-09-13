@@ -841,6 +841,326 @@ def delete_transaction(transaction_id):
 
 
 # ============================================================
+# BUDGET MANAGEMENT
+# ============================================================
+
+@app.route("/api/budgets", methods=["POST"])
+def create_budget():
+    connection = None
+    cursor = None
+
+    try:
+        data = request.get_json()
+
+        user_id = data.get("user_id")
+        category_id = data.get("category_id")
+        budget_name = data.get("budget_name")
+        amount = data.get("amount")
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+
+        if not user_id or not category_id or amount is None or not start_date or not end_date:
+            return {
+                "status": "error",
+                "message": "user_id, category_id, amount, start_date and end_date are required"
+            }, 400
+
+        amount = float(amount)
+
+        if amount <= 0:
+            return {
+                "status": "error",
+                "message": "Budget amount must be greater than 0"
+            }, 400
+
+        if end_date < start_date:
+            return {
+                "status": "error",
+                "message": "end_date cannot be before start_date"
+            }, 400
+
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        query = """
+            INSERT INTO budgets
+            (user_id, category_id, budget_name, amount, start_date, end_date)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING budget_id, user_id, category_id, budget_name,
+                      amount, start_date, end_date, created_at
+        """
+
+        cursor.execute(query, (
+            user_id,
+            category_id,
+            budget_name,
+            amount,
+            start_date,
+            end_date
+        ))
+
+        budget = cursor.fetchone()
+        connection.commit()
+
+        return {
+            "status": "success",
+            "message": "Budget created successfully",
+            "budget": {
+                "budget_id": budget[0],
+                "user_id": budget[1],
+                "category_id": budget[2],
+                "budget_name": budget[3],
+                "amount": float(budget[4]),
+                "start_date": str(budget[5]),
+                "end_date": str(budget[6]),
+                "created_at": str(budget[7])
+            }
+        }, 201
+
+    except Exception as e:
+        if connection:
+            connection.rollback()
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }, 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+
+@app.route("/api/budgets", methods=["GET"])
+def get_budgets():
+    connection = None
+    cursor = None
+
+    try:
+        user_id = request.args.get("user_id")
+
+        if not user_id:
+            return {
+                "status": "error",
+                "message": "user_id is required"
+            }, 400
+
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        query = """
+            SELECT budget_id, user_id, category_id, budget_name,
+                   amount, start_date, end_date, created_at
+            FROM budgets
+            WHERE user_id = %s
+            ORDER BY budget_id
+        """
+
+        cursor.execute(query, (user_id,))
+        rows = cursor.fetchall()
+
+        budgets = []
+
+        for row in rows:
+            budgets.append({
+                "budget_id": row[0],
+                "user_id": row[1],
+                "category_id": row[2],
+                "budget_name": row[3],
+                "amount": float(row[4]),
+                "start_date": str(row[5]),
+                "end_date": str(row[6]),
+                "created_at": str(row[7])
+            })
+
+        return {
+            "status": "success",
+            "count": len(budgets),
+            "budgets": budgets
+        }, 200
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }, 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+
+@app.route("/api/budgets/<int:budget_id>", methods=["PUT"])
+def update_budget(budget_id):
+    connection = None
+    cursor = None
+
+    try:
+        data = request.get_json()
+
+        user_id = data.get("user_id")
+        category_id = data.get("category_id")
+        budget_name = data.get("budget_name")
+        amount = data.get("amount")
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+
+        if not user_id or not category_id or amount is None or not start_date or not end_date:
+            return {
+                "status": "error",
+                "message": "user_id, category_id, amount, start_date and end_date are required"
+            }, 400
+
+        amount = float(amount)
+
+        if amount <= 0:
+            return {
+                "status": "error",
+                "message": "Budget amount must be greater than 0"
+            }, 400
+
+        if end_date < start_date:
+            return {
+                "status": "error",
+                "message": "end_date cannot be before start_date"
+            }, 400
+
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        query = """
+            UPDATE budgets
+            SET category_id = %s,
+                budget_name = %s,
+                amount = %s,
+                start_date = %s,
+                end_date = %s
+            WHERE budget_id = %s
+              AND user_id = %s
+            RETURNING budget_id, user_id, category_id, budget_name,
+                      amount, start_date, end_date, created_at
+        """
+
+        cursor.execute(query, (
+            category_id,
+            budget_name,
+            amount,
+            start_date,
+            end_date,
+            budget_id,
+            user_id
+        ))
+
+        budget = cursor.fetchone()
+
+        if not budget:
+            connection.rollback()
+
+            return {
+                "status": "error",
+                "message": "Budget not found"
+            }, 404
+
+        connection.commit()
+
+        return {
+            "status": "success",
+            "message": "Budget updated successfully",
+            "budget": {
+                "budget_id": budget[0],
+                "user_id": budget[1],
+                "category_id": budget[2],
+                "budget_name": budget[3],
+                "amount": float(budget[4]),
+                "start_date": str(budget[5]),
+                "end_date": str(budget[6]),
+                "created_at": str(budget[7])
+            }
+        }, 200
+
+    except Exception as e:
+        if connection:
+            connection.rollback()
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }, 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+
+@app.route("/api/budgets/<int:budget_id>", methods=["DELETE"])
+def delete_budget(budget_id):
+    connection = None
+    cursor = None
+
+    try:
+        user_id = request.args.get("user_id")
+
+        if not user_id:
+            return {
+                "status": "error",
+                "message": "user_id is required"
+            }, 400
+
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        query = """
+            DELETE FROM budgets
+            WHERE budget_id = %s
+              AND user_id = %s
+            RETURNING budget_id
+        """
+
+        cursor.execute(query, (budget_id, user_id))
+
+        deleted_budget = cursor.fetchone()
+
+        if not deleted_budget:
+            connection.rollback()
+
+            return {
+                "status": "error",
+                "message": "Budget not found"
+            }, 404
+
+        connection.commit()
+
+        return {
+            "status": "success",
+            "message": "Budget deleted successfully",
+            "budget_id": deleted_budget[0]
+        }, 200
+
+    except Exception as e:
+        if connection:
+            connection.rollback()
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }, 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+
+
+
+# ============================================================
 # RUN FLASK
 # ============================================================
 
