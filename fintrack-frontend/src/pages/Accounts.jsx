@@ -1,13 +1,36 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import api from "../services/api";
 
 function Accounts() {
   const [accounts, setAccounts] = useState([]);
-
   const [accountName, setAccountName] = useState("");
   const [accountType, setAccountType] = useState("");
   const [balance, setBalance] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const addAccount = (e) => {
+  const fetchAccounts = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await api.get("/accounts");
+      setAccounts(response.data.accounts || []);
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.response?.data?.message || "Failed to load accounts."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  const addAccount = async (e) => {
     e.preventDefault();
 
     if (!accountName.trim() || !accountType || balance === "") {
@@ -20,24 +43,37 @@ function Accounts() {
       return;
     }
 
-    const newAccount = {
-      id: Date.now(),
-      name: accountName.trim(),
-      type: accountType,
-      balance: Number(balance),
-    };
+    try {
+      await api.post("/accounts", {
+        account_name: accountName.trim(),
+        account_type: accountType,
+        opening_balance: Number(balance),
+        currency: "INR",
+      });
 
-    setAccounts((prevAccounts) => [...prevAccounts, newAccount]);
+      setAccountName("");
+      setAccountType("");
+      setBalance("");
 
-    setAccountName("");
-    setAccountType("");
-    setBalance("");
+      await fetchAccounts();
+    } catch (err) {
+      console.error(err);
+      alert(
+        err.response?.data?.message || "Failed to add account."
+      );
+    }
   };
 
-  const deleteAccount = (id) => {
-    setAccounts((prevAccounts) =>
-      prevAccounts.filter((account) => account.id !== id)
-    );
+  const deleteAccount = async (accountId) => {
+    try {
+      await api.delete(`/accounts/${accountId}`);
+      await fetchAccounts();
+    } catch (err) {
+      console.error(err);
+      alert(
+        err.response?.data?.message || "Failed to delete account."
+      );
+    }
   };
 
   return (
@@ -64,6 +100,7 @@ function Accounts() {
         <div>
           <label htmlFor="accountType">Account Type</label>
           <br />
+
           <select
             id="accountType"
             value={accountType}
@@ -82,6 +119,7 @@ function Accounts() {
         <div>
           <label htmlFor="balance">Balance</label>
           <br />
+
           <input
             id="balance"
             type="number"
@@ -102,27 +140,34 @@ function Accounts() {
 
       <h2>My Accounts</h2>
 
-      {accounts.length === 0 ? (
-        <p>No accounts added yet.</p>
-      ) : (
-        accounts.map((account) => (
-          <div key={account.id}>
-            <h3>{account.name}</h3>
+      {loading && <p>Loading accounts...</p>}
 
-            <p>Type: {account.type}</p>
+      {error && <p>{error}</p>}
+
+      {!loading && !error && accounts.length === 0 && (
+        <p>No accounts added yet.</p>
+      )}
+
+      {!loading &&
+        accounts.map((account) => (
+          <div key={account.account_id}>
+            <h3>{account.account_name}</h3>
+
+            <p>Type: {account.account_type}</p>
 
             <p>
-              Balance: ₹{account.balance.toFixed(2)}
+              Balance: ₹{Number(account.opening_balance).toFixed(2)}
             </p>
 
-            <button onClick={() => deleteAccount(account.id)}>
+            <button
+              onClick={() => deleteAccount(account.account_id)}
+            >
               Delete
             </button>
 
             <hr />
           </div>
-        ))
-      )}
+        ))}
     </div>
   );
 }

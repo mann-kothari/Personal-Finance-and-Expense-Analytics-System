@@ -1,12 +1,17 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../services/api";
 
 function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = (e) => {
+  const navigate = useNavigate();
+
+  const handleRegister = async (e) => {
     e.preventDefault();
 
     if (
@@ -34,12 +39,36 @@ function Register() {
       return;
     }
 
-    alert("Registration form submitted successfully.");
+    try {
+      setLoading(true);
 
-    setName("");
-    setEmail("");
-    setPassword("");
-    setConfirmPassword("");
+      const response = await api.post("/auth/register", {
+        name: name.trim(),
+        email: email.trim(),
+        password,
+      });
+
+      alert(
+        response.data?.message ||
+          "Registration successful. Please login."
+      );
+
+      setName("");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+
+      navigate("/login");
+    } catch (err) {
+      console.error(err);
+
+      alert(
+        err.response?.data?.message ||
+          "Registration failed. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -109,8 +138,8 @@ function Register() {
 
         <br />
 
-        <button type="submit">
-          Register
+        <button type="submit" disabled={loading}>
+          {loading ? "Registering..." : "Register"}
         </button>
       </form>
     </div>
