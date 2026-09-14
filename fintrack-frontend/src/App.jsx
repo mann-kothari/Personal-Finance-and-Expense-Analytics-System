@@ -7,6 +7,10 @@ import Transactions from "./pages/Transactions";
 import Accounts from "./pages/Accounts";
 import Categories from "./pages/Categories";
 import Analytics from "./pages/Analytics";
+import Budget from "./pages/Budget";
+import Goals from "./pages/Goals";
+
+
 
 function App() {
   return (
@@ -19,6 +23,8 @@ function App() {
         <Route path="/accounts" element={<Accounts />} />
         <Route path="/categories" element={<Categories />} />
         <Route path="/analytics" element={<Analytics />} />
+        <Route path="/budget" element={<Budget />} />
+        <Route path="/goals" element={<Goals />} />
       </Routes>
     </BrowserRouter>
   );
