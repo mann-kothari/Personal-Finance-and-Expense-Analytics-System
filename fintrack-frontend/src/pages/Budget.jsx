@@ -16,6 +16,7 @@ function Budget() {
   const userId = getUserIdFromToken();
 
   const [budgets, setBudgets] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -40,10 +41,25 @@ function Budget() {
       );
     }
   };
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get("/categories");
+      setCategories(response.data.categories || []);
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        error.response?.data?.message ||
+          "Failed to load categories"
+      );
+    }
+  };
+
 
   useEffect(() => {
     if (userId) {
       fetchBudgets();
+      fetchCategories();
     }
   }, [userId]);
 
@@ -239,27 +255,37 @@ function Budget() {
             onSubmit={handleSubmit}
             className="grid grid-cols-1 gap-5 md:grid-cols-2"
           >
-            {/* Category ID */}
+            {/* Category */}
             <div>
               <label
                 htmlFor="category_id"
                 className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700"
               >
                 <Tag size={16} />
-                Category ID
+                Category
               </label>
 
-              <input
+              <select
                 id="category_id"
-                type="number"
                 name="category_id"
                 value={formData.category_id}
                 onChange={handleChange}
-                min="1"
                 required
-                placeholder="e.g. 1"
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-              />
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              >
+                <option value="">Select Category</option>
+
+                {categories
+                  .filter((category) => category.category_type === "EXPENSE")
+                  .map((category) => (
+                    <option
+                      key={category.category_id}
+                      value={category.category_id}
+                    >
+                      {category.category_name}
+                    </option>
+                  ))}
+              </select>
             </div>
 
             {/* Budget Name */}

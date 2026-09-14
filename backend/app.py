@@ -1524,6 +1524,66 @@ def delete_goal(goal_id):
             connection.close()
 
 
+# ============================================================
+# GET ALL CATEGORIES
+# ============================================================
+
+@app.route("/api/categories", methods=["GET"])
+@token_required
+def get_categories():
+    connection = None
+    cursor = None
+
+    try:
+        user_id = request.user_id
+
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        query = """
+            SELECT
+                category_id,
+                user_id,
+                category_name,
+                category_type,
+                created_at
+            FROM categories
+            WHERE user_id = %s
+            ORDER BY category_id
+        """
+
+        cursor.execute(query, (user_id,))
+        rows = cursor.fetchall()
+
+        categories = []
+
+        for row in rows:
+            categories.append({
+                "category_id": row[0],
+                "user_id": row[1],
+                "category_name": row[2],
+                "category_type": row[3],
+                "created_at": row[4].isoformat() if row[4] else None
+            })
+
+        return {
+            "status": "success",
+            "count": len(categories),
+            "categories": categories
+        }, 200
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }, 500
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if connection:
+            connection.close()
 
 # ============================================================
 # RUN FLASK

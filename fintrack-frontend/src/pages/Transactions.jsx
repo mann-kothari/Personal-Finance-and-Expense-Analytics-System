@@ -16,6 +16,9 @@ import api from "../services/api";
 
 function Transactions() {
   const [transactions, setTransactions] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [categories, setCategories] = useState([]);
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -48,8 +51,32 @@ function Transactions() {
     }
   };
 
+  // GET accounts
+  const fetchAccounts = async () => {
+    try {
+      const response = await api.get("/accounts");
+
+      setAccounts(response.data.accounts || []);
+    } catch (error) {
+      console.error("Failed to load accounts:", error);
+    }
+  };
+
+  // GET categories
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get("/categories");
+
+      setCategories(response.data.categories || []);
+    } catch (error) {
+      console.error("Failed to load categories:", error);
+    }
+  };
+
   useEffect(() => {
     fetchTransactions();
+    fetchAccounts();
+    fetchCategories();
   }, []);
 
   // Form input
@@ -60,11 +87,37 @@ function Transactions() {
       ...prev,
       [name]: value,
     }));
+
+    // If transaction type changes, clear selected category
+    if (name === "type") {
+      setFormData((prev) => ({
+        ...prev,
+        type: value,
+        category: "",
+      }));
+    }
   };
+
+  // Categories matching transaction type
+  const filteredCategories = categories.filter(
+    (category) =>
+      category.category_type?.toUpperCase() ===
+      formData.type.toUpperCase()
+  );
 
   // ADD or UPDATE
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.account) {
+      alert("Please select an account.");
+      return;
+    }
+
+    if (!formData.category) {
+      alert("Please select a category.");
+      return;
+    }
 
     const transactionData = {
       account_id: Number(formData.account),
@@ -76,15 +129,13 @@ function Transactions() {
     };
 
     try {
-      let response;
-
       if (editingId) {
-        response = await api.put(
+        await api.put(
           `/transactions/${editingId}`,
           transactionData
         );
       } else {
-        response = await api.post(
+        await api.post(
           "/transactions",
           transactionData
         );
@@ -113,11 +164,11 @@ function Transactions() {
     setEditingId(transaction.transaction_id);
 
     setFormData({
-      date: transaction.transaction_date,
+      date: transaction.transaction_date?.split("T")[0] || "",
       description: transaction.description || "",
       category: String(transaction.category_id),
       type:
-        transaction.transaction_type === "INCOME"
+        transaction.transaction_type?.toUpperCase() === "INCOME"
           ? "Income"
           : "Expense",
       amount: String(transaction.amount),
@@ -349,31 +400,28 @@ function Transactions() {
 
               {/* Account */}
               <div>
-                <label
-                  htmlFor="account"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
-                >
-                  Account ID
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Account
                 </label>
 
-                <div className="relative">
-                  <Wallet
-                    size={18}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                  />
+                <select
+                  name="account"
+                  value={formData.account}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                  required
+                >
+                  <option value="">Select Account</option>
 
-                  <input
-                    id="account"
-                    type="number"
-                    name="account"
-                    value={formData.account}
-                    onChange={handleChange}
-                    placeholder="Enter account ID"
-                    min="1"
-                    required
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
-                  />
-                </div>
+                  {accounts.map((account) => (
+                    <option
+                      key={account.account_id}
+                      value={account.account_id}
+                    >
+                      {account.account_name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Category */}
@@ -382,26 +430,36 @@ function Transactions() {
                   htmlFor="category"
                   className="mb-2 block text-sm font-semibold text-slate-700"
                 >
-                  Category ID
+                  Category
                 </label>
 
                 <div className="relative">
                   <Tag
                     size={18}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                   />
 
-                  <input
+                  <select
                     id="category"
-                    type="number"
                     name="category"
                     value={formData.category}
                     onChange={handleChange}
-                    placeholder="Enter category ID"
-                    min="1"
                     required
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
-                  />
+                    className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
+                  >
+                    <option value="">
+                      Select a category
+                    </option>
+
+                    {filteredCategories.map((category) => (
+                      <option
+                        key={category.category_id}
+                        value={category.category_id}
+                      >
+                        {category.category_name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -563,6 +621,18 @@ function Transactions() {
                     transaction.transaction_type?.toUpperCase() ===
                     "INCOME";
 
+                  const account = accounts.find(
+                    (item) =>
+                      Number(item.account_id) ===
+                      Number(transaction.account_id)
+                  );
+
+                  const category = categories.find(
+                    (item) =>
+                      Number(item.category_id) ===
+                      Number(transaction.category_id)
+                  );
+
                   return (
                     <tr
                       key={transaction.transaction_id}
@@ -578,11 +648,13 @@ function Transactions() {
                       </td>
 
                       <td className="px-6 py-4 text-slate-500">
-                        #{transaction.account_id}
+                        {account?.account_name ||
+                          `#${transaction.account_id}`}
                       </td>
 
                       <td className="px-6 py-4 text-slate-500">
-                        #{transaction.category_id}
+                        {category?.category_name ||
+                          `#${transaction.category_id}`}
                       </td>
 
                       <td className="px-6 py-4">
