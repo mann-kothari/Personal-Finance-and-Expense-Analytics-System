@@ -284,7 +284,7 @@ def register():
                 "message": "Name, email and password are required"
             }, 400
 
-        # Clean email
+        # Clean input
         name = name.strip()
         email = email.strip().lower()
 
@@ -345,7 +345,38 @@ def register():
 
         user = cursor.fetchone()
 
-        # Save changes
+        # Get the newly created user's ID
+        user_id = user[0]
+
+        # Create default categories for this user
+        default_categories = [
+            ("Food", "EXPENSE"),
+            ("Travel", "EXPENSE"),
+            ("Shopping", "EXPENSE"),
+            ("Bills", "EXPENSE"),
+            ("Entertainment", "EXPENSE"),
+            ("Salary", "INCOME"),
+            ("Freelance", "INCOME"),
+            ("Other Income", "INCOME")
+        ]
+
+        cursor.executemany(
+            """
+            INSERT INTO categories
+            (
+                user_id,
+                category_name,
+                category_type
+            )
+            VALUES (%s, %s, %s)
+            """,
+            [
+                (user_id, category_name, category_type)
+                for category_name, category_type in default_categories
+            ]
+        )
+
+        # Save user + categories together
         connection.commit()
 
         return {
