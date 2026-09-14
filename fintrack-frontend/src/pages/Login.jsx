@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { WalletCards, Mail, Lock, ArrowRight } from "lucide-react";
 import api from "../services/api";
 
 function Login() {
@@ -55,44 +56,171 @@ function Login() {
   };
 
   return (
-    <div>
-      <h1>Login</h1>
+    <div className="min-h-screen bg-slate-950">
+      <div className="grid min-h-screen lg:grid-cols-2">
+        {/* Left Branding Section */}
+        <div className="relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between bg-indigo-600 p-12 text-white">
+          <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-white/10" />
+          <div className="absolute -bottom-40 -left-20 h-96 w-96 rounded-full bg-white/10" />
 
-      <form onSubmit={handleLogin}>
-        <div>
-          <label htmlFor="email">Email</label>
-          <br />
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-lg font-bold text-indigo-600">
+              F
+            </div>
 
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
-          />
+            <div>
+              <h1 className="text-xl font-bold">FinTrack</h1>
+              <p className="text-xs text-indigo-100">
+                Personal Finance
+              </p>
+            </div>
+          </div>
+
+          <div className="relative z-10 max-w-lg">
+            <p className="mb-4 text-sm font-semibold uppercase tracking-widest text-indigo-200">
+              Take control of your money
+            </p>
+
+            <h2 className="text-4xl font-bold leading-tight">
+              Manage your finances with confidence.
+            </h2>
+
+            <p className="mt-5 max-w-md text-base leading-7 text-indigo-100">
+              Track expenses, manage budgets, monitor savings goals,
+              and understand your financial habits in one place.
+            </p>
+          </div>
+
+          <p className="relative z-10 text-sm text-indigo-200">
+            © 2026 FinTrack
+          </p>
         </div>
 
-        <br />
+        {/* Login Section */}
+        <div className="flex items-center justify-center bg-slate-50 px-5 py-10 sm:px-8">
+          <div className="w-full max-w-md">
+            {/* Mobile Logo */}
+            <div className="mb-10 flex items-center justify-center gap-3 lg:hidden">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold text-white shadow-lg shadow-indigo-600/20">
+                F
+              </div>
 
-        <div>
-          <label htmlFor="password">Password</label>
-          <br />
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">
+                  FinTrack
+                </h1>
+                <p className="text-xs text-slate-500">
+                  Personal Finance
+                </p>
+              </div>
+            </div>
 
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-          />
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-xl shadow-slate-200/50 sm:p-9">
+              <div className="mb-8">
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                  <WalletCards size={24} />
+                </div>
+
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                  Welcome back
+                </h2>
+
+                <p className="mt-2 text-sm text-slate-500">
+                  Sign in to continue to your FinTrack account.
+                </p>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-5">
+                {/* Email */}
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="mb-2 block text-sm font-semibold text-slate-700"
+                  >
+                    Email address
+                  </label>
+
+                  <div className="relative">
+                    <Mail
+                      size={18}
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="mb-2 block text-sm font-semibold text-slate-700"
+                  >
+                    Password
+                  </label>
+
+                  <div className="relative">
+                    <Lock
+                      size={18}
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+
+                    <input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
+                    />
+                  </div>
+                </div>
+
+                {/* Submit */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="group flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? (
+                    "Logging in..."
+                  ) : (
+                    <>
+                      Sign in
+                      <ArrowRight
+                        size={17}
+                        className="transition group-hover:translate-x-1"
+                      />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <div className="my-7 flex items-center gap-3">
+                <div className="h-px flex-1 bg-slate-200" />
+                <span className="text-xs text-slate-400">
+                  New to FinTrack?
+                </span>
+                <div className="h-px flex-1 bg-slate-200" />
+              </div>
+
+              <Link
+                to="/register"
+                className="flex w-full items-center justify-center rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+              >
+                Create an account
+              </Link>
+            </div>
+          </div>
         </div>
-
-        <br />
-
-        <button type="submit" disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
+      </div>
     </div>
   );
 }
