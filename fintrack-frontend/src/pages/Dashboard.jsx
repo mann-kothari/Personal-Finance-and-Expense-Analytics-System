@@ -127,20 +127,34 @@ function Dashboard() {
 
       {/* Quick Links */}
       <div>
+        <h2>Quick Links</h2>
+
         <Link to="/transactions">
-          View Transactions
+          Transactions
         </Link>
 
         {" | "}
 
         <Link to="/accounts">
-          View Accounts
+          Accounts
+        </Link>
+
+        {" | "}
+
+        <Link to="/budget">
+          Budget
+        </Link>
+
+        {" | "}
+
+        <Link to="/goals">
+          Savings Goals
         </Link>
 
         {" | "}
 
         <Link to="/analytics">
-          View Analytics
+          Analytics
         </Link>
       </div>
 
