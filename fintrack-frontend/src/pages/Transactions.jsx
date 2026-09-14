@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
-
-const API_URL = "http://127.0.0.1:5000";
+import api from "../services/api";
 
 function Transactions() {
-  const USER_ID = 1;
-  const ACCOUNT_ID = 1;
-
   const [transactions, setTransactions] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -16,25 +12,26 @@ function Transactions() {
     category: "",
     type: "Expense",
     amount: "",
+    account: "",
   });
 
   // GET transactions
   const fetchTransactions = async () => {
     try {
-      const response = await fetch(
-        `${API_URL}/api/transactions?user_id=${USER_ID}`
-      );
+      const response = await api.get("/transactions");
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setTransactions(data.transactions);
-      } else {
-        alert(data.message || "Failed to load transactions");
-      }
+      setTransactions(response.data.transactions || []);
     } catch (error) {
       console.error(error);
-      alert("Cannot connect to Flask backend");
+
+      if (error.response?.status === 401) {
+        alert("Session expired. Please login again.");
+      } else {
+        alert(
+          error.response?.data?.message ||
+            "Failed to load transactions"
+        );
+      }
     }
   };
 
@@ -46,10 +43,10 @@ function Transactions() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   };
 
   // ADD or UPDATE
@@ -57,8 +54,7 @@ function Transactions() {
     e.preventDefault();
 
     const transactionData = {
-      user_id: USER_ID,
-      account_id: ACCOUNT_ID,
+      account_id: Number(formData.account),
       category_id: Number(formData.category),
       transaction_type: formData.type.toUpperCase(),
       amount: Number(formData.amount),
@@ -70,49 +66,36 @@ function Transactions() {
       let response;
 
       if (editingId) {
-        // UPDATE
-        response = await fetch(
-          `${API_URL}/api/transactions/${editingId}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(transactionData),
-          }
+        response = await api.put(
+          `/transactions/${editingId}`,
+          transactionData
         );
       } else {
-        // ADD
-        response = await fetch(`${API_URL}/api/transactions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(transactionData),
-        });
-      }
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert(
-          editingId
-            ? "Transaction updated successfully"
-            : "Transaction added successfully"
+        response = await api.post(
+          "/transactions",
+          transactionData
         );
-
-        resetForm();
-        fetchTransactions();
-      } else {
-        alert(data.message || "Operation failed");
       }
+
+      alert(
+        editingId
+          ? "Transaction updated successfully"
+          : "Transaction added successfully"
+      );
+
+      resetForm();
+      fetchTransactions();
     } catch (error) {
       console.error(error);
-      alert("Cannot connect to Flask backend");
+
+      alert(
+        error.response?.data?.message ||
+          "Transaction operation failed"
+      );
     }
   };
 
-  // EDIT button
+  // EDIT
   const handleEdit = (transaction) => {
     setEditingId(transaction.transaction_id);
 
@@ -125,6 +108,7 @@ function Transactions() {
           ? "Income"
           : "Expense",
       amount: String(transaction.amount),
+      account: String(transaction.account_id),
     });
 
     setShowForm(true);
@@ -141,28 +125,24 @@ function Transactions() {
     }
 
     try {
-      const response = await fetch(
-        `${API_URL}/api/transactions/${transactionId}?user_id=${USER_ID}`,
-        {
-          method: "DELETE",
-        }
+      await api.delete(
+        `/transactions/${transactionId}`
       );
 
-      const data = await response.json();
+      alert("Transaction deleted successfully");
 
-      if (response.ok) {
-        alert("Transaction deleted successfully");
-        fetchTransactions();
-      } else {
-        alert(data.message || "Failed to delete transaction");
-      }
+      fetchTransactions();
     } catch (error) {
       console.error(error);
-      alert("Cannot connect to Flask backend");
+
+      alert(
+        error.response?.data?.message ||
+          "Failed to delete transaction"
+      );
     }
   };
 
-  // Reset form
+  // Reset
   const resetForm = () => {
     setFormData({
       date: "",
@@ -170,6 +150,7 @@ function Transactions() {
       category: "",
       type: "Expense",
       amount: "",
+      account: "",
     });
 
     setEditingId(null);
@@ -189,9 +170,7 @@ function Transactions() {
           }
         }}
       >
-        {showForm
-          ? "Close"
-          : "Add Transaction"}
+        {showForm ? "Close" : "Add Transaction"}
       </button>
 
       {showForm && (
@@ -215,6 +194,19 @@ function Transactions() {
               value={formData.description}
               onChange={handleChange}
               placeholder="Enter description"
+              required
+            />
+          </div>
+
+          <div>
+            <label>Account ID</label>
+            <input
+              type="number"
+              name="account"
+              value={formData.account}
+              onChange={handleChange}
+              placeholder="Enter account ID"
+              min="1"
               required
             />
           </div>
@@ -253,6 +245,7 @@ function Transactions() {
               onChange={handleChange}
               placeholder="Enter amount"
               min="1"
+              step="0.01"
               required
             />
           </div>
@@ -283,6 +276,7 @@ function Transactions() {
           <tr>
             <th>Date</th>
             <th>Description</th>
+            <th>Account</th>
             <th>Category</th>
             <th>Type</th>
             <th>Amount</th>
@@ -291,39 +285,63 @@ function Transactions() {
         </thead>
 
         <tbody>
-          {transactions.map((transaction) => (
-            <tr key={transaction.transaction_id}>
-              <td>{transaction.transaction_date}</td>
-
-              <td>{transaction.description}</td>
-
-              <td>{transaction.category_id}</td>
-
-              <td>{transaction.transaction_type}</td>
-
-              <td>₹{transaction.amount}</td>
-
-              <td>
-                <button
-                  onClick={() =>
-                    handleEdit(transaction)
-                  }
-                >
-                  Edit
-                </button>
-
-                <button
-                  onClick={() =>
-                    handleDelete(
-                      transaction.transaction_id
-                    )
-                  }
-                >
-                  Delete
-                </button>
+          {transactions.length === 0 ? (
+            <tr>
+              <td colSpan="7">
+                No transactions found
               </td>
             </tr>
-          ))}
+          ) : (
+            transactions.map((transaction) => (
+              <tr
+                key={transaction.transaction_id}
+              >
+                <td>
+                  {transaction.transaction_date}
+                </td>
+
+                <td>
+                  {transaction.description}
+                </td>
+
+                <td>
+                  {transaction.account_id}
+                </td>
+
+                <td>
+                  {transaction.category_id}
+                </td>
+
+                <td>
+                  {transaction.transaction_type}
+                </td>
+
+                <td>
+                  ₹{transaction.amount}
+                </td>
+
+                <td>
+                  <button
+                    onClick={() =>
+                      handleEdit(transaction)
+                    }
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      handleDelete(
+                        transaction.transaction_id
+                      )
+                    }
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
