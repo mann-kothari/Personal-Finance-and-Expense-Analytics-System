@@ -1,4 +1,15 @@
 import { useEffect, useState } from "react";
+import {
+  Target,
+  Plus,
+  Pencil,
+  Trash2,
+  CalendarDays,
+  IndianRupee,
+  X,
+  Trophy,
+  CircleDollarSign,
+} from "lucide-react";
 import api from "../services/api";
 import { getUserIdFromToken } from "../utils/auth";
 
@@ -20,10 +31,7 @@ function Goals() {
 
   const fetchGoals = async () => {
     try {
-      const response = await api.get(
-        `/goals?user_id=${userId}`
-      );
-
+      const response = await api.get(`/goals?user_id=${userId}`);
       setGoals(response.data.goals || []);
     } catch (error) {
       console.error(error);
@@ -58,16 +66,12 @@ function Goals() {
       return;
     }
 
-    if (
-      Number(formData.target_amount) <= 0
-    ) {
+    if (Number(formData.target_amount) <= 0) {
       alert("Target amount must be greater than 0.");
       return;
     }
 
-    if (
-      Number(formData.current_amount) < 0
-    ) {
+    if (Number(formData.current_amount) < 0) {
       alert("Current amount cannot be negative.");
       return;
     }
@@ -75,34 +79,22 @@ function Goals() {
     const goalData = {
       user_id: userId,
       goal_name: formData.goal_name,
-      target_amount: Number(
-        formData.target_amount
-      ),
-      current_amount: Number(
-        formData.current_amount
-      ),
-      target_date:
-        formData.target_date || null,
+      target_amount: Number(formData.target_amount),
+      current_amount: Number(formData.current_amount),
+      target_date: formData.target_date || null,
       description: formData.description,
       status: formData.status,
     };
 
     try {
       if (editingId) {
-        await api.put(
-          `/goals/${editingId}`,
-          goalData
-        );
+        await api.put(`/goals/${editingId}`, goalData);
 
-        alert(
-          "Savings goal updated successfully"
-        );
+        alert("Savings goal updated successfully");
       } else {
         await api.post("/goals", goalData);
 
-        alert(
-          "Savings goal created successfully"
-        );
+        alert("Savings goal created successfully");
       }
 
       resetForm();
@@ -122,12 +114,8 @@ function Goals() {
 
     setFormData({
       goal_name: goal.goal_name || "",
-      target_amount: String(
-        goal.target_amount
-      ),
-      current_amount: String(
-        goal.current_amount
-      ),
+      target_amount: String(goal.target_amount),
+      current_amount: String(goal.current_amount),
       target_date: goal.target_date || "",
       description: goal.description || "",
       status: goal.status || "ACTIVE",
@@ -146,13 +134,9 @@ function Goals() {
     }
 
     try {
-      await api.delete(
-        `/goals/${goalId}?user_id=${userId}`
-      );
+      await api.delete(`/goals/${goalId}?user_id=${userId}`);
 
-      alert(
-        "Savings goal deleted successfully"
-      );
+      alert("Savings goal deleted successfully");
 
       fetchGoals();
     } catch (error) {
@@ -192,196 +176,481 @@ function Goals() {
     return Math.min(Math.max(progress, 0), 100);
   };
 
+  const totalTarget = goals.reduce(
+    (total, goal) => total + Number(goal.target_amount || 0),
+    0
+  );
+
+  const totalSaved = goals.reduce(
+    (total, goal) => total + Number(goal.current_amount || 0),
+    0
+  );
+
+  const completedGoals = goals.filter(
+    (goal) => goal.status === "COMPLETED"
+  ).length;
+
+  const getStatusClasses = (status) => {
+    switch (status) {
+      case "COMPLETED":
+        return "bg-emerald-50 text-emerald-700";
+      case "PAUSED":
+        return "bg-amber-50 text-amber-700";
+      default:
+        return "bg-indigo-50 text-indigo-700";
+    }
+  };
+
   return (
-    <div>
-      <h1>Savings Goals</h1>
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+            <Target size={24} />
+          </div>
 
-      <button
-        onClick={() => {
-          if (showForm) {
-            resetForm();
-          } else {
-            setShowForm(true);
-          }
-        }}
-      >
-        {showForm ? "Close" : "Add Goal"}
-      </button>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">
+              Savings Goals
+            </h1>
 
+            <p className="text-sm text-slate-500">
+              Set targets and track your savings progress
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => {
+            if (showForm) {
+              resetForm();
+            } else {
+              setShowForm(true);
+            }
+          }}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.98]"
+        >
+          {showForm ? <X size={18} /> : <Plus size={18} />}
+          {showForm ? "Close" : "Add Goal"}
+        </button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-500">
+                Total Target
+              </p>
+
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                ₹
+                {totalTarget.toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </p>
+            </div>
+
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <Target size={22} />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-500">
+                Total Saved
+              </p>
+
+              <p className="mt-2 text-2xl font-bold text-emerald-600">
+                ₹
+                {totalSaved.toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </p>
+            </div>
+
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <CircleDollarSign size={22} />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-500">
+                Completed Goals
+              </p>
+
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {completedGoals}
+              </p>
+            </div>
+
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+              <Trophy size={22} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Goal Form */}
       {showForm && (
-        <form onSubmit={handleSubmit}>
-          <div>
-            <label>Goal Name</label>
-            <input
-              type="text"
-              name="goal_name"
-              value={formData.goal_name}
-              onChange={handleChange}
-              placeholder="e.g. New Laptop"
-              required
-            />
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-slate-900">
+              {editingId ? "Edit Savings Goal" : "Create Savings Goal"}
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              {editingId
+                ? "Update the details of your savings goal"
+                : "Set a target and start tracking your progress"}
+            </p>
           </div>
 
-          <div>
-            <label>Target Amount</label>
-            <input
-              type="number"
-              name="target_amount"
-              value={formData.target_amount}
-              onChange={handleChange}
-              min="1"
-              step="0.01"
-              required
-            />
-          </div>
+          <form
+            onSubmit={handleSubmit}
+            className="grid grid-cols-1 gap-5 md:grid-cols-2"
+          >
+            {/* Goal Name */}
+            <div>
+              <label
+                htmlFor="goal_name"
+                className="mb-2 block text-sm font-medium text-slate-700"
+              >
+                Goal Name
+              </label>
 
-          <div>
-            <label>Current Amount</label>
-            <input
-              type="number"
-              name="current_amount"
-              value={formData.current_amount}
-              onChange={handleChange}
-              min="0"
-              step="0.01"
-              required
-            />
-          </div>
+              <input
+                id="goal_name"
+                type="text"
+                name="goal_name"
+                value={formData.goal_name}
+                onChange={handleChange}
+                placeholder="e.g. New Laptop"
+                required
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
 
-          <div>
-            <label>Target Date</label>
-            <input
-              type="date"
-              name="target_date"
-              value={formData.target_date}
-              onChange={handleChange}
-            />
-          </div>
+            {/* Target Amount */}
+            <div>
+              <label
+                htmlFor="target_amount"
+                className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700"
+              >
+                <IndianRupee size={16} />
+                Target Amount
+              </label>
 
-          <div>
-            <label>Description</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Describe your goal"
-            />
-          </div>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                  ₹
+                </span>
 
-          <div>
-            <label>Status</label>
-            <select
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-            >
-              <option value="ACTIVE">
-                ACTIVE
-              </option>
-              <option value="COMPLETED">
-                COMPLETED
-              </option>
-              <option value="PAUSED">
-                PAUSED
-              </option>
-            </select>
-          </div>
+                <input
+                  id="target_amount"
+                  type="number"
+                  name="target_amount"
+                  value={formData.target_amount}
+                  onChange={handleChange}
+                  min="1"
+                  step="0.01"
+                  required
+                  placeholder="Enter target"
+                  className="w-full rounded-xl border border-slate-300 py-3 pl-9 pr-4 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+            </div>
 
-          <button type="submit">
-            {editingId
-              ? "Update Goal"
-              : "Save Goal"}
-          </button>
+            {/* Current Amount */}
+            <div>
+              <label
+                htmlFor="current_amount"
+                className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700"
+              >
+                <IndianRupee size={16} />
+                Current Amount
+              </label>
 
-          {editingId && (
-            <button
-              type="button"
-              onClick={resetForm}
-            >
-              Cancel Edit
-            </button>
-          )}
-        </form>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                  ₹
+                </span>
+
+                <input
+                  id="current_amount"
+                  type="number"
+                  name="current_amount"
+                  value={formData.current_amount}
+                  onChange={handleChange}
+                  min="0"
+                  step="0.01"
+                  required
+                  placeholder="Amount saved"
+                  className="w-full rounded-xl border border-slate-300 py-3 pl-9 pr-4 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+            </div>
+
+            {/* Target Date */}
+            <div>
+              <label
+                htmlFor="target_date"
+                className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700"
+              >
+                <CalendarDays size={16} />
+                Target Date
+              </label>
+
+              <input
+                id="target_date"
+                type="date"
+                name="target_date"
+                value={formData.target_date}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label
+                htmlFor="description"
+                className="mb-2 block text-sm font-medium text-slate-700"
+              >
+                Description
+              </label>
+
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Describe your goal"
+                rows="4"
+                className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+
+            {/* Status */}
+            <div>
+              <label
+                htmlFor="status"
+                className="mb-2 block text-sm font-medium text-slate-700"
+              >
+                Status
+              </label>
+
+              <select
+                id="status"
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="COMPLETED">COMPLETED</option>
+                <option value="PAUSED">PAUSED</option>
+              </select>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex flex-wrap gap-3 md:col-span-2">
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              >
+                {editingId ? <Pencil size={18} /> : <Plus size={18} />}
+                {editingId ? "Update Goal" : "Save Goal"}
+              </button>
+
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  <X size={18} />
+                  Cancel Edit
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
       )}
 
-      <hr />
+      {/* Goals */}
+      <div>
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Your Savings Goals
+          </h2>
 
-      <h2>Your Savings Goals</h2>
+          <p className="text-sm text-slate-500">
+            Track how close you are to reaching your targets
+          </p>
+        </div>
 
-      {goals.length === 0 ? (
-        <p>No savings goals found.</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Goal</th>
-              <th>Target</th>
-              <th>Saved</th>
-              <th>Progress</th>
-              <th>Target Date</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
+        {goals.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-14 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+              <Target size={26} />
+            </div>
 
-          <tbody>
+            <h3 className="font-semibold text-slate-800">
+              No savings goals found
+            </h3>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Create your first savings goal to start tracking your progress.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             {goals.map((goal) => {
-              const progress =
-                calculateProgress(goal);
+              const progress = calculateProgress(goal);
 
               return (
-                <tr key={goal.goal_id}>
-                  <td>{goal.goal_name}</td>
+                <div
+                  key={goal.goal_id}
+                  className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  {/* Goal Header */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                        <Target size={22} />
+                      </div>
 
-                  <td>
-                    ₹
-                    {Number(
-                      goal.target_amount
-                    ).toFixed(2)}
-                  </td>
+                      <div>
+                        <h3 className="font-semibold text-slate-900">
+                          {goal.goal_name}
+                        </h3>
 
-                  <td>
-                    ₹
-                    {Number(
-                      goal.current_amount
-                    ).toFixed(2)}
-                  </td>
+                        <p className="text-xs text-slate-400">
+                          Goal #{goal.goal_id}
+                        </p>
+                      </div>
+                    </div>
 
-                  <td>
-                    {progress.toFixed(1)}%
-                  </td>
-
-                  <td>
-                    {goal.target_date || "—"}
-                  </td>
-
-                  <td>{goal.status}</td>
-
-                  <td>
-                    <button
-                      onClick={() =>
-                        handleEdit(goal)
-                      }
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(
+                        goal.status
+                      )}`}
                     >
+                      {goal.status}
+                    </span>
+                  </div>
+
+                  {/* Amounts */}
+                  <div className="mt-6 grid grid-cols-2 gap-4">
+                    <div className="rounded-xl bg-slate-50 p-4">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                        Saved
+                      </p>
+
+                      <p className="mt-1 text-lg font-bold text-emerald-600">
+                        ₹
+                        {Number(
+                          goal.current_amount
+                        ).toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl bg-slate-50 p-4">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                        Target
+                      </p>
+
+                      <p className="mt-1 text-lg font-bold text-slate-900">
+                        ₹
+                        {Number(
+                          goal.target_amount
+                        ).toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="mt-5">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-600">
+                        Progress
+                      </span>
+
+                      <span className="text-sm font-bold text-indigo-600">
+                        {progress.toFixed(1)}%
+                      </span>
+                    </div>
+
+                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-indigo-600 transition-all duration-500"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Details */}
+                  <div className="mt-5 border-t border-slate-100 pt-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">
+                        Target Date
+                      </span>
+
+                      <span className="font-medium text-slate-700">
+                        {goal.target_date || "No date set"}
+                      </span>
+                    </div>
+
+                    {goal.description && (
+                      <p className="mt-3 text-sm leading-5 text-slate-500">
+                        {goal.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="mt-5 flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => handleEdit(goal)}
+                      title="Edit goal"
+                      className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      <Pencil size={17} />
                       Edit
                     </button>
 
                     <button
-                      onClick={() =>
-                        handleDelete(
-                          goal.goal_id
-                        )
-                      }
+                      onClick={() => handleDelete(goal.goal_id)}
+                      title="Delete goal"
+                      className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-red-50 hover:text-red-600"
                     >
+                      <Trash2 size={17} />
                       Delete
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-        </table>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
